@@ -5,10 +5,6 @@ import pandas as pd
 import datetime as dt
 import requests
 import json
-<<<<<<< HEAD
-=======
-
->>>>>>> 6c0e298931bbac9ce455e30cd29fe070795109b6
 
 # Sceen size
 st.set_page_config(layout="wide")
