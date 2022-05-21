@@ -1,4 +1,3 @@
-from asyncio.log import logger
 import streamlit as st
 from logging import getLogger
 import numpy as np
@@ -6,12 +5,11 @@ import pandas as pd
 import datetime as dt
 import requests
 import json
-import matplotlib.pyplot as plt
 
+# Sceen size
 st.set_page_config(layout="wide")
 
-default_load = True
-#Token
+# Create Logger
 loggers =  getLogger()
 
 #Start of API Credentials
@@ -37,7 +35,6 @@ class polygon_api:
     token is unique token for authorization 
     url is base url of the the api'''
 
-
     def __init__(self) :
         self.token = 'tpHEpdlolUR703YTAdrvOHaUMW6PEDPw'
         self.authorization = {'Authorization':'Bearer '+ self.token}
@@ -48,7 +45,7 @@ class polygon_api:
         return : 
         list of tickers '''
         try:
-            logger.error(f'get ticker : Try block called')
+            loggers.error(f'get ticker : Try block called')
 
             ticker_url = POLYGON_TICKERS_URL.format(active,order,limit)
             ticker_json = self.get_data(ticker_url)
@@ -57,7 +54,7 @@ class polygon_api:
             # ticker_df.to_csv('data/tickers/tickerlist.csv', index=False)
             return ticker_df
         except Exception as e:
-            logger.error(f'get ticker : exception block called {e}')
+            loggers.error(f'get ticker : exception block called {e}')
 
 
     def get_aggregate(self,stocksTicker,multiplier,timespan,from_date,to_date):
@@ -70,25 +67,25 @@ class polygon_api:
             to_date : datetime as str : to date 
             Method: get
             request url : /v2/aggs/ticker/{stocksTicker}/range/{multiplier}/{timespan}/{from}/{to} 
-            Response : Data Frame of the particular stock'''    
+            Response : Data Frame of the particular stock '''    
         try:
-            logger.info('Start get_aggregate : try block method')
+            loggers.info('Start get_aggregate : try block method')
             method_url = (POLYGON_AGGS_URL.format(stocksTicker,multiplier,timespan,from_date,to_date)) # f'aggs/ticker/{stocksTicker}/range/{multiplier}/{timespan}/{from_date}/{to_date}'
             
-            logger.info('Get method call: try block method')
+            loggers.info('Get method call: try block method')
             response_json = self.get_data(method_url)
-            logger.info(f'Get method called: try block method \n {response_json}')
+            loggers.info(f'Get method called: try block method \n {response_json}')
             # aggreget_response_df = pd.DataFrame(response_json)
             if response_json['status']  != 'ERROR':
                 if response_json['queryCount'] > 0:
-                    logger.info('get_aggregate : If block Call')
+                    loggers.info('get_aggregate : If block Call')
                     # print(response_json)
                     stock_name = response_json['ticker']
                     stock_result = response_json['results']
 
                     aggreget_response_df = pd.DataFrame(stock_result)
                     aggreget_response_df = aggreget_response_df.rename({'v':'volume','vw':'volume_weight','o':'open','c':'close','h':'high','l':'low','t':'date','n':'no_of_trans'}, axis=1)  # new method
-                    # logger.info(f'convert to df :   {aggreget_response_df}')
+                    # loggers.info(f'convert to df :   {aggreget_response_df}')
                     # aggreget_response_df['t'] = pd.to_datetime(aggreget_response_df['t'], format='%Y%m%d')
                     aggreget_response_df.date = aggreget_response_df["date"].apply(self.get_date)
 
@@ -97,14 +94,14 @@ class polygon_api:
                     # aggreget_response_df.to_csv(f'data/stockdetails/{stock_name}.csv')
                     return stock_details
                 else:
-                    logger.info('get_aggregate : Else block Call')
+                    loggers.info('get_aggregate : Else block Call')
                     stock_details = (f'No Data Found For  {stocksTicker}',[])
                     return stock_details
             else:
                 stock_details = (f'Maximum limit of API Call is Reached.',[])
                 return stock_details
         except Exception as e:
-            logger.error(f'get_aggregate : Except block Call {e}')
+            loggers.error(f'get_aggregate : Except block Call {e}')
 
     def get_data(self,method_url):
         '''THIS METHOD IS USE FOR THE CALL THE GET API TO polygon.io 
@@ -123,24 +120,24 @@ class polygon_api:
             't' : The Unix Msec timestamp for the start of the aggregate window.
             'n' : The open price for the symbol in the given time period '''
         try:
-            logger.info('get_data : try block')
+            loggers.info('get_data : try block')
             # api_url = self.url + method_url
 
-            logger.info(f' get request url : {method_url}')
+            loggers.info(f' get request url : {method_url}')
             response = requests.get(method_url,  headers=self.authorization)
             agg_content = json.loads(response.text)
             return agg_content
         except Exception as e:
-            logger.error(f'get_data : except Block {e}')
+            loggers.error(f'get_data : except Block {e}')
             raise e
     
     def get_date(self, created):
         '''this method is convert timestamp to data time formate''' 
         try:
-            # logger.info(f'get_date : try block call {created}')
+            # loggers.info(f'get_date : try block call {created}')
             return dt.datetime.fromtimestamp((created/1000)).strftime('%Y-%m')
         except Exception as e:
-            logger.info(f'get_date : exception block call { e} ')
+            loggers.info(f'get_date : exception block call { e} ')
 #End of Polygon API Code
 
 
@@ -148,6 +145,35 @@ def stock_details_fun(stock_details):
     # display the details of stock 
     st.subheader(f'{stock_details[0]} Stock Data')
     st.write(stock_details[1])
+
+    if stock_details[0].upper() == "APPL":
+        # line chart for open
+        st.subheader(f'{stock_details[0]} Open stock price data')
+        df = pd.DataFrame({
+        'date': stock_details[1]['date'],
+        'open stock_price': stock_details[1]['open']
+        })
+        df = df.rename(columns={'date':'index'}).set_index('index')
+        st.line_chart(df)
+    else :
+        loggers.info("test")
+        stock_details_AAPL_from_csv = pd.read_csv("data/stockdetails/AAPL.csv")
+        # loggers.info(stock_details_from_csv)
+        # stock_details = pd.DataFrame(stock_details_from_csv)
+
+        stock_details_def = ('APPL',stock_details_AAPL_from_csv)
+        # Multiple Line chart for high and low stock_price
+        st.subheader(f'{stock_details[0]} Comapare stock price data')
+        compare_stock = pd.DataFrame({
+        'date': stock_details[1]['date'],
+        'APPL Open stock_price': stock_details_def[1]['open'],
+        'Open stock_price': stock_details[1]['open']
+        })
+        loggers.info(compare_stock)
+        compare_stock = compare_stock.rename(columns={'date':'index'}).set_index('index')
+        # chart_data = compare_stock
+        st.line_chart(compare_stock)
+
 
     # line chart for open
     st.subheader(f'{stock_details[0]} Open stock price data')
@@ -188,16 +214,6 @@ def stock_details_fun(stock_details):
     chart_data = df
     st.bar_chart(chart_data)
 
-    # #Pie chart
-    # stock_details = aggreget_api.get_aggregate(stock_details[0].upper(),1,'year','2018-01-01',todays_date)
-    # labels = stock_details[1]['date']
-    # sizes = stock_details[1]['volume']
-    # fig, ax = plt.subplots(figsize=(2,2))
-    # ax.pie(sizes, labels=labels, autopct="%1.1f%%")
-    # ax.axis("equal")
-    # st.pyplot(fig)
-
-
 title_col1,title_col2,title_col3 = st.columns([3,4,2])
 with title_col1:
     pass
@@ -230,14 +246,14 @@ stock_details = []
 todays_date = dt.datetime.now().date() 
 
 #Start of search
-def getTickerdetails(ticker_name):
+def getTickerdetails(ticker_name,from_date,to_date):
     if(ticker_name):
-        logger.info('getTickerdetails : if Condition BEFOR SPLIT called tikker Name {}'.format(ticker_name))
+        loggers.info('getTickerdetails : if Condition BEFOR SPLIT called tikker Name {}'.format(ticker_name))
         ticker_value = ticker_name.split('-')
         ticker_name = ticker_value[0]
 
-        logger.info('getTickerdetails : if Condition called tikker Name {}'.format(ticker_name))
-        stock_details = aggreget_api.get_aggregate(ticker_name.upper(),1,'month','2021-01-01',todays_date)
+        loggers.info('getTickerdetails : if Condition called tikker Name {}'.format(ticker_name))
+        stock_details = aggreget_api.get_aggregate(ticker_name.upper(),1,'month',from_date,to_date)
 
         if len(stock_details[1]) > 0:
             stock_details_fun(stock_details)
@@ -245,9 +261,15 @@ def getTickerdetails(ticker_name):
         else:
             st.warning(f' {stock_details[0]}')
     else:
-        logger.info('getTickerdetails : else Condition called tikker Name {}'.format(ticker_name))
+        loggers.info('getTickerdetails : else Condition called tikker Name {}'.format(ticker_name))
         st.warning('Please Enter Tickker Name')
 #End of search
+
+# from_date = st.sidebar.date_input('From Date')
+# to_date = st.sidebar.date_input('To Date', max_value =todays_date)
+# to_date = st.sidebar.multiselect('TickerList',combine_ticker_name)
+
+
 
 #start of select box,text box, and search button design
 col1,col2,col3 = st.columns([1,1,1])
@@ -256,19 +278,30 @@ with col1:
     ticker_name = st.selectbox('Select Ticker :',combine_ticker_name,index = default_ix)
 with col2:
     ticker_txt_Name = st.text_input('Enter Ticker:',key='txt_ticker_name')
+# with col3:
+    # multiselect_ticker = st.multiselect('Multi Select Ticker ',combine_ticker_name)
+date_col1,date_col2,date_col3 = st.columns([1,1,1])
+
+with date_col1:
+    from_date = st.date_input('From Date')
+    
+with date_col2:
+    to_date = st.date_input('To Date', max_value =todays_date)
+loggers.info(from_date)
+loggers.info(to_date)
 
 if ticker_txt_Name:
     ticker_name = ticker_txt_Name
 if st.button('Search'):
-    getTickerdetails(ticker_name)
+    getTickerdetails(ticker_name,from_date,to_date)
     default_load = False
 else:
     stock_details_from_csv = pd.read_csv("data/stockdetails/AAPL.csv")
-    # logger.info(stock_details_from_csv)
+    # loggers.info(stock_details_from_csv)
     # stock_details = pd.DataFrame(stock_details_from_csv)
 
     stock_details_def = ('APPL',stock_details_from_csv)
-    logger.info(stock_details_def)
+    loggers.info(stock_details_def)
     stock_details_fun(stock_details_def)
     #end of select box,text box, and search button design
 
